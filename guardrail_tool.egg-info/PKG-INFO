@@ -1,0 +1,60 @@
+Metadata-Version: 2.4
+Name: guardrail-tool
+Version: 0.1.0
+Summary: Standalone guardrail library/tool (NeMo input + Presidio output)
+Author: PIIPOC
+License: MIT
+Project-URL: Homepage, https://example.invalid
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: nemoguardrails>=0.10.0
+Requires-Dist: presidio-analyzer>=2.2.355
+Requires-Dist: presidio-anonymizer>=2.2.355
+Requires-Dist: spacy>=3.7.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: pytest-benchmark>=5.1.0; extra == "dev"
+
+# Guardrail Tool / Library
+
+Standalone guardrail library/tool extracted from the project.
+
+Includes:
+- `NemoInputGuard` for prompt-injection / off-topic input checks
+- `PresidioOutputGuard` for PII detection + anonymization/blocking
+- `GuardrailsTool` orchestration helper for agent integration
+
+## NeMo Setup (Local Ollama)
+
+Default model is `qwen2.5:7b` in `guardrail_tool/nemo_config/config.yml`.
+
+```bash
+ollama serve
+ollama pull qwen2.5:7b
+curl -sS http://localhost:11434/api/tags
+curl -sS http://localhost:11434/api/chat -d '{"model":"qwen2.5:7b","messages":[{"role":"user","content":"reply with No"}],"stream":false}'
+```
+
+## Performance Targets (Pragmatic)
+
+- NeMo input guard: <= 12s/request
+- Presidio guard: <= 1.5s/request
+
+## Run Tests
+
+```bash
+python -m pytest
+```
+
+Optional real perf test:
+
+```bash
+GUARDRAILS_RUN_REAL_PERF=1 python -m pytest tests/test_performance_real_optional.py
+```
+
+## Benchmark CLI (ASCII + colors)
+
+```bash
+guardrail-bench --runs 5
+guardrail-bench --real --runs 3
+```

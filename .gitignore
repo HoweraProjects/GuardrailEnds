@@ -1,0 +1,9 @@
+.venv/
+.venv311/
+__pycache__/
+.pytest_cache/
+.benchmarks/
+*.pyc
+*.pyo
+*.pyd
+*.DS_Store

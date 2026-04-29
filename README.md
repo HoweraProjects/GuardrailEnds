@@ -1,0 +1,45 @@
+# Guardrail Tool / Library
+
+Standalone guardrail library/tool extracted from the project.
+
+Detailed documentation is available in [`docs/`](./docs/README.md).
+
+Includes:
+- `NemoInputGuard` for prompt-injection / off-topic input checks
+- `PresidioOutputGuard` for PII detection + anonymization/blocking
+- `GuardrailsTool` orchestration helper for agent integration
+
+## NeMo Setup (Local Ollama)
+
+Default model is `qwen2.5:7b` in `guardrail_tool/nemo_config/config.yml`.
+
+```bash
+ollama serve
+ollama pull qwen2.5:7b
+curl -sS http://localhost:11434/api/tags
+curl -sS http://localhost:11434/api/chat -d '{"model":"qwen2.5:7b","messages":[{"role":"user","content":"reply with No"}],"stream":false}'
+```
+
+## Performance Targets (Pragmatic)
+
+- NeMo input guard: <= 12s/request
+- Presidio guard: <= 5s/request
+
+## Run Tests
+
+```bash
+python3 -m pytest
+```
+
+Optional real perf test:
+
+```bash
+GUARDRAILS_RUN_REAL_PERF=1 python3 -m pytest tests/test_performance_real_optional.py
+```
+
+## Benchmark CLI (ASCII + colors)
+
+```bash
+guardrail-bench --runs 5
+guardrail-bench --real --runs 3
+```
