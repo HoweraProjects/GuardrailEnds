@@ -43,3 +43,23 @@ GUARDRAILS_RUN_REAL_PERF=1 python3 -m pytest tests/test_performance_real_optiona
 guardrail-bench --runs 5
 guardrail-bench --real --runs 3
 ```
+
+## One-Command Ollama Integration (Client-Side)
+
+Run a local proxy that sits in front of your existing Ollama and applies guardrails automatically:
+
+```bash
+guardrail-ollama-proxy --listen-port 11435 --upstream http://127.0.0.1:11434
+```
+
+Then point your client to:
+
+- Base URL: `http://127.0.0.1:11435`
+
+Supported endpoints:
+- `/api/chat`
+- `/api/generate`
+
+Notes:
+- The proxy enforces NeMo input checks + Presidio input/output protections.
+- For compatibility, streaming requests are handled as single final NDJSON event (not token-by-token passthrough).

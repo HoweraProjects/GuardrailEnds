@@ -18,6 +18,7 @@ dependencies = [
 
 [project.scripts]
 guardrail-bench = "guardrail_tool.cli:main"
+guardrail-ollama-proxy = "guardrail_tool.ollama_proxy:main"
 
 [build-system]
 requires = ["setuptools>=69.0.0"]

@@ -52,6 +52,24 @@ post = guard.guard_inference(user_input="What is the F1 score?", llm_output=raw_
 print(post.final_output)
 ```
 
+## 5.5) One-command Ollama client integration
+
+If your app already calls Ollama endpoints (`/api/chat` or `/api/generate`), run:
+
+```bash
+guardrail-ollama-proxy --listen-port 11435 --upstream http://127.0.0.1:11434
+```
+
+Then switch your client base URL from:
+
+- `http://127.0.0.1:11434`
+
+to:
+
+- `http://127.0.0.1:11435`
+
+No application code changes are required beyond base URL update.
+
 ## 6) Run tests
 
 ```bash
