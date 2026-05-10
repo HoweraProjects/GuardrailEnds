@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import re
+from collections import OrderedDict
 from typing import Literal, Optional
 
 from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer
@@ -35,6 +38,7 @@ DEFAULT_ENTITIES = [
     "TW_MOBILE",
     "TW_STUDENT_ID",
 ]
+_PII_HINT_PATTERN = re.compile(r"[@\d]|09\d{2}|[A-Z][12]\d{8}")
 
 
 def _build_analyzer() -> AnalyzerEngine:
@@ -70,12 +74,23 @@ class PresidioOutputGuard(GuardrailClient):
         language: str = "zh",
         analyzer: Optional[AnalyzerEngine] = None,
         anonymizer: Optional[AnonymizerEngine] = None,
+        cache_size: Optional[int] = None,
+        quick_skip_chars: Optional[int] = None,
     ):
         self.analyzer = analyzer
         self.anonymizer = anonymizer
         self.pii_action = pii_action
         self.entities = entities or DEFAULT_ENTITIES
         self.language = language
+        self.cache_size = (
+            cache_size if cache_size is not None else int(os.getenv("GUARDRAILS_PRESIDIO_CACHE_SIZE", "512"))
+        )
+        self.quick_skip_chars = (
+            quick_skip_chars
+            if quick_skip_chars is not None
+            else int(os.getenv("GUARDRAILS_PRESIDIO_QUICK_SKIP_CHARS", "120"))
+        )
+        self._cache: OrderedDict[tuple[str, str], GuardrailResponse] = OrderedDict()
 
     def _ensure_initialized(self) -> None:
         if self.analyzer is None:
@@ -83,13 +98,46 @@ class PresidioOutputGuard(GuardrailClient):
         if self.anonymizer is None:
             self.anonymizer = AnonymizerEngine()
 
+    def _cache_get(self, key: tuple[str, str]) -> Optional[GuardrailResponse]:
+        cached = self._cache.get(key)
+        if cached is None:
+            return None
+        self._cache.move_to_end(key)
+        return cached
+
+    def _cache_set(self, key: tuple[str, str], value: GuardrailResponse) -> None:
+        if self.cache_size <= 0:
+            return
+        self._cache[key] = value
+        self._cache.move_to_end(key)
+        while len(self._cache) > self.cache_size:
+            self._cache.popitem(last=False)
+
+    def _quick_skip(self, text: str) -> bool:
+        # Fast-path for short content with no obvious PII-like tokens.
+        return (
+            self.pii_action == "ANONYMIZE"
+            and len(text) <= self.quick_skip_chars
+            and not _PII_HINT_PATTERN.search(text)
+        )
+
     def apply_guardrail(
         self, source: Literal["INPUT", "OUTPUT"], text: str
     ) -> GuardrailResponse:
+        if self._quick_skip(text):
+            return {"action": "NONE", "output": [{"text": text}], "assessments": []}
+
+        cache_key = (source, text)
+        cached = self._cache_get(cache_key)
+        if cached is not None:
+            return cached
+
         self._ensure_initialized()
         results = self.analyzer.analyze(text=text, entities=self.entities, language=self.language)
         if not results:
-            return {"action": "NONE", "output": [{"text": text}], "assessments": []}
+            response = {"action": "NONE", "output": [{"text": text}], "assessments": []}
+            self._cache_set(cache_key, response)
+            return response
 
         if self.pii_action == "BLOCK":
             output_text = "Sorry, the response contains sensitive information and was blocked."
@@ -119,4 +167,6 @@ class PresidioOutputGuard(GuardrailClient):
                 ],
             }
         }
-        return {"action": "GUARDRAIL_INTERVENED", "output": [{"text": output_text}], "assessments": [assessment]}
+        response = {"action": "GUARDRAIL_INTERVENED", "output": [{"text": output_text}], "assessments": [assessment]}
+        self._cache_set(cache_key, response)
+        return response

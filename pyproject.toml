@@ -19,6 +19,7 @@ dependencies = [
 [project.scripts]
 guardrail-bench = "guardrail_tool.cli:main"
 guardrail-ollama-proxy = "guardrail_tool.ollama_proxy:main"
+guardrail-tui = "guardrail_tool.settings_tui:main"
 
 [build-system]
 requires = ["setuptools>=69.0.0"]
@@ -39,3 +40,4 @@ select = ["E", "F", "W"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0", "pytest-benchmark>=5.1.0"]
+tui = ["textual>=0.58.0"]

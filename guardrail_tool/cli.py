@@ -11,15 +11,22 @@ from .presidio_output_guard import PresidioOutputGuard
 
 
 class C:
+    """ANSI palette aligned with `settings_tui` (slate + cyan + indigo accents)."""
+
     RESET = "\033[0m"
     BOLD = "\033[1m"
     DIM = "\033[2m"
-    CYAN = "\033[96m"
-    BLUE = "\033[94m"
-    GREEN = "\033[92m"
-    YELLOW = "\033[93m"
-    RED = "\033[91m"
-    MAGENTA = "\033[95m"
+    # Foreground
+    SLATE = "\033[38;5;252m"
+    MUTED = "\033[38;5;245m"
+    CYAN = "\033[38;5;117m"  # ~#7dd3fc
+    SKY = "\033[38;5;81m"  # brighter cyan
+    INDIGO = "\033[38;5;147m"  # ~lavender labels
+    BLUE = "\033[38;5;75m"
+    GREEN = "\033[38;5;114m"
+    YELLOW = "\033[38;5;221m"
+    RED = "\033[38;5;203m"
+    MAGENTA = "\033[38;5;213m"
 
 
 ASCII_BANNER = r"""
@@ -82,6 +89,22 @@ def _status_badge(ms: float) -> str:
     return _paint("SLOW", C.RED, C.BOLD)
 
 
+def _rule(width: int, heavy: bool = False) -> str:
+    ch = "━" if heavy else "─"
+    line = ch * width
+    return _paint(line, C.MUTED, C.DIM)
+
+
+def _subtitle_line(mode: str, runs: int) -> str:
+    left = _paint("guardrail-bench", C.INDIGO, C.BOLD)
+    meta = _paint(
+        f"  ·  mode={mode}  ·  runs={runs}  ·  latency in ms",
+        C.MUTED,
+        C.DIM,
+    )
+    return left + meta
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="guardrail-bench")
     parser.add_argument("--real", action="store_true")
@@ -89,16 +112,9 @@ def main() -> None:
     args = parser.parse_args()
 
     mode = "real" if args.real else "stub"
-    print(_paint(ASCII_BANNER, C.MAGENTA, C.BOLD))
-    print(_paint("Guardrail Performance Benchmark", C.CYAN, C.BOLD))
-    print(
-        _paint(
-            f"mode={mode} | runs={args.runs} | renderer=ascii+ansi",
-            C.BLUE,
-            C.DIM,
-        )
-    )
-    print(_paint("─" * 88, C.DIM))
+    print(_paint(ASCII_BANNER, C.SKY, C.BOLD))
+    print(_paint("Guardrail studio · benchmark", C.CYAN, C.BOLD))
+    print(_subtitle_line(mode, args.runs))
 
     if args.real:
         try:
@@ -115,7 +131,7 @@ def main() -> None:
                 args.runs,
             )
         except Exception as e:
-            print(_paint(f"✖ Benchmark failed: {e}", C.RED, C.BOLD))
+            print(_paint(f"✖ benchmark failed: {e}", C.RED, C.BOLD))
             raise SystemExit(1)
     else:
         class _DummyRails:
@@ -138,23 +154,28 @@ def main() -> None:
         )
 
     header = f"{'Guardrail':<24} {'avg(ms)':>10} {'p95(ms)':>10} {'max(ms)':>10}  {'status':<8}  trend"
-    print(_paint(header, C.BOLD))
-    print(_paint("─" * len(header), C.DIM))
+    print(_rule(88, heavy=True))
+    print(_paint(header, C.SLATE, C.BOLD))
+    print(_rule(88))
 
     for result in (nemo_result, presidio_result):
         trend = _sparkline(result["samples"])
-        print(
-            f"{_paint('✓', C.GREEN, C.BOLD)} "
-            f"{result['label']:<22} "
-            f"{result['avg_ms']:>10.1f} "
-            f"{result['p95_ms']:>10.1f} "
-            f"{result['max_ms']:>10.1f}  "
-            f"{_status_badge(result['p95_ms']):<8}  "
-            f"{_paint(trend, C.CYAN)}"
-        )
+        label = _paint(f"{result['label']:<22}", C.SLATE)
+        mark = _paint("✓", C.GREEN, C.BOLD)
+        nums = f"{result['avg_ms']:>10.1f} {result['p95_ms']:>10.1f} {result['max_ms']:>10.1f}  "
+        badge = _status_badge(result["p95_ms"])
+        spark = _paint(trend, C.SKY)
+        row = f"{mark} {label} {nums}{badge}  {spark}"
+        print(row)
 
-    print(_paint("─" * len(header), C.DIM))
-    print(_paint("Done. Stay safe, ship fast.", C.CYAN, C.BOLD))
+    print(_rule(88, heavy=True))
+    print(
+        _paint("Done. ", C.MUTED)
+        + _paint("Stay safe, ship fast.", C.CYAN, C.BOLD)
+        + _paint("  ·  try ", C.MUTED, C.DIM)
+        + _paint("guardrail-tui", C.INDIGO, C.BOLD)
+        + _paint(" for config.", C.MUTED, C.DIM)
+    )
 
 
 if __name__ == "__main__":

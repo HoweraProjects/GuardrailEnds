@@ -14,8 +14,10 @@ class DummyResult:
 class DummyAnalyzer:
     def __init__(self, results):
         self._results = results
+        self.calls = 0
 
     def analyze(self, text, entities, language):
+        self.calls += 1
         return self._results
 
 
@@ -62,3 +64,19 @@ def test_presidio_output_guard_block():
     )
     resp = guard.apply_guardrail("OUTPUT", "x")
     assert resp["action"] == "GUARDRAIL_INTERVENED"
+
+
+def test_presidio_output_guard_cache_reuses_previous_analysis():
+    analyzer = DummyAnalyzer([DummyResult(entity_type="EMAIL_ADDRESS", start=0, end=1)])
+    guard = PresidioOutputGuard(analyzer=analyzer, anonymizer=DummyAnonymizer(), quick_skip_chars=0)
+    guard.apply_guardrail("OUTPUT", "x")
+    guard.apply_guardrail("OUTPUT", "x")
+    assert analyzer.calls == 1
+
+
+def test_presidio_output_guard_quick_skip_short_safe_text():
+    analyzer = DummyAnalyzer([DummyResult(entity_type="EMAIL_ADDRESS", start=0, end=1)])
+    guard = PresidioOutputGuard(analyzer=analyzer, anonymizer=DummyAnonymizer(), quick_skip_chars=120)
+    resp = guard.apply_guardrail("OUTPUT", "safe short sentence")
+    assert resp["action"] == "NONE"
+    assert analyzer.calls == 0

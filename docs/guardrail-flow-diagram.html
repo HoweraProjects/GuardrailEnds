@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guardrail Tool Flow Diagram</title>
+  <meta name="theme-color" content="#0b0f14" />
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #0f172a;
+      --panel-border: #334155;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-soft: #7dd3fc;
+      --indigo: #a5b4fc;
+      --teal: #22d3ee;
+      --green: #4ade80;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+    body {
+      font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "PingFang TC",
+        "Microsoft JhengHei", sans-serif;
+      margin: 0;
+      padding: 32px 28px 48px;
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 10% -10%, #111827 0%, var(--bg) 55%);
+      line-height: 1.55;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 1.65rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(105deg, var(--accent-soft), var(--indigo));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .lede {
+      margin: 0 0 20px;
+      max-width: 980px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    p {
+      margin-top: 0;
+      margin-bottom: 16px;
+      max-width: 980px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      overflow-x: auto;
+    }
+    .layer-notes {
+      margin-top: 22px;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 22px 24px;
+      box-shadow: var(--shadow);
+      max-width: 1120px;
+    }
+    .layer-notes h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 1.25rem;
+      color: var(--accent-soft);
+      font-weight: 600;
+    }
+    .layer-notes h3 {
+      margin: 20px 0 8px;
+      font-size: 1rem;
+      color: var(--indigo);
+      font-weight: 600;
+    }
+    .layer-notes ul {
+      margin-top: 0;
+      margin-bottom: 10px;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+    .layer-notes li strong {
+      color: var(--text);
+    }
+    svg text {
+      font-size: 12px;
+      fill: var(--text);
+    }
+    .node {
+      fill: #1e293b;
+      stroke: var(--accent);
+      stroke-width: 1.5;
+      rx: 8;
+    }
+    .decision {
+      fill: #164e63;
+      stroke: var(--teal);
+      stroke-width: 1.5;
+    }
+    .end {
+      fill: #14532d;
+      stroke: var(--green);
+      stroke-width: 1.5;
+    }
+    .edge {
+      stroke: #64748b;
+      stroke-width: 1.35;
+      fill: none;
+      marker-end: url(#arrow);
+    }
+    .dashed {
+      stroke-dasharray: 6 5;
+      stroke: #475569;
+    }
+  </style>
+</head>
+<body>
+  <h1>Guardrail flow</h1>
+  <p class="lede">
+    How requests move through the local guardrail proxy: NeMo validates user input, Presidio
+    redacts input PII, Ollama generates a response, and Presidio checks output PII before the
+    client receives the final text.
+  </p>
+
+  <div class="panel">
+    <svg width="1180" height="820" viewBox="0 0 1180 820" role="img" aria-label="Guardrail flow diagram">
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"></path>
+        </marker>
+      </defs>
+
+      <rect class="node" x="30" y="30" width="240" height="52"></rect>
+      <text x="50" y="52">Client app</text>
+      <text x="50" y="70">/api/chat or /api/generate</text>
+
+      <rect class="node" x="320" y="30" width="230" height="52"></rect>
+      <text x="340" y="61">guardrail-ollama-proxy</text>
+
+      <rect class="node" x="600" y="30" width="300" height="52"></rect>
+      <text x="620" y="52">GuardrailsTool.guard_inference</text>
+      <text x="620" y="70">(user_input, llm_output=None)</text>
+
+      <rect class="node" x="930" y="30" width="220" height="52"></rect>
+      <text x="950" y="61">NemoInputGuard (INPUT)</text>
+
+      <rect class="decision" x="930" y="130" width="220" height="52"></rect>
+      <text x="968" y="161">Input blocked?</text>
+
+      <rect class="end" x="930" y="230" width="220" height="52"></rect>
+      <text x="946" y="252">Return refusal response</text>
+      <text x="965" y="270">(blocked at INPUT)</text>
+
+      <rect class="node" x="620" y="230" width="280" height="52"></rect>
+      <text x="640" y="252">PresidioOutputGuard (INPUT)</text>
+      <text x="640" y="270">PII anonymize or block</text>
+
+      <rect class="node" x="320" y="230" width="250" height="52"></rect>
+      <text x="340" y="252">Forward to upstream Ollama</text>
+      <text x="340" y="270">(stream forced false)</text>
+
+      <rect class="node" x="30" y="230" width="240" height="52"></rect>
+      <text x="50" y="261">Receive LLM response</text>
+
+      <rect class="node" x="30" y="340" width="320" height="52"></rect>
+      <text x="50" y="362">GuardrailsTool.guard_inference</text>
+      <text x="50" y="380">(user_input, llm_output)</text>
+
+      <rect class="node" x="390" y="340" width="280" height="52"></rect>
+      <text x="410" y="362">PresidioOutputGuard (OUTPUT)</text>
+      <text x="410" y="380">PII anonymize or block</text>
+
+      <rect class="decision" x="710" y="340" width="220" height="52"></rect>
+      <text x="753" y="371">Output blocked?</text>
+
+      <rect class="end" x="960" y="340" width="190" height="52"></rect>
+      <text x="985" y="371">Return redacted</text>
+      <text x="1000" y="387">or blocked output</text>
+
+      <rect class="end" x="960" y="430" width="190" height="52"></rect>
+      <text x="982" y="461">Return original</text>
+      <text x="1004" y="477">LLM output</text>
+
+      <rect class="node" x="420" y="510" width="330" height="60"></rect>
+      <text x="440" y="535">Performance optimizations</text>
+      <text x="440" y="553">- in-memory cache</text>
+      <text x="440" y="569">- quick-allow / quick-skip fast paths</text>
+
+      <line class="edge" x1="270" y1="56" x2="320" y2="56"></line>
+      <line class="edge" x1="550" y1="56" x2="600" y2="56"></line>
+      <line class="edge" x1="900" y1="56" x2="930" y2="56"></line>
+      <line class="edge" x1="1040" y1="82" x2="1040" y2="130"></line>
+      <line class="edge" x1="1040" y1="182" x2="1040" y2="230"></line>
+
+      <line class="edge" x1="930" y1="156" x2="760" y2="156"></line>
+      <line class="edge" x1="760" y1="156" x2="760" y2="230"></line>
+      <line class="edge" x1="620" y1="256" x2="570" y2="256"></line>
+      <line class="edge" x1="320" y1="256" x2="270" y2="256"></line>
+      <line class="edge" x1="150" y1="282" x2="150" y2="340"></line>
+      <line class="edge" x1="350" y1="366" x2="390" y2="366"></line>
+      <line class="edge" x1="670" y1="366" x2="710" y2="366"></line>
+      <line class="edge" x1="930" y1="366" x2="960" y2="366"></line>
+      <line class="edge" x1="820" y1="392" x2="820" y2="456"></line>
+      <line class="edge" x1="820" y1="456" x2="960" y2="456"></line>
+
+      <line class="edge dashed" x1="585" y1="510" x2="1030" y2="182"></line>
+      <line class="edge dashed" x1="535" y1="510" x2="760" y2="282"></line>
+      <line class="edge dashed" x1="640" y1="510" x2="530" y2="392"></line>
+
+      <text x="850" y="146">No</text>
+      <text x="1050" y="210">Yes</text>
+      <text x="940" y="334">Yes</text>
+      <text x="835" y="444">No</text>
+    </svg>
+  </div>
+
+  <section class="layer-notes">
+    <h2>Function Of Each Layer</h2>
+
+    <h3>Layer 1: NeMo Input Guard (Input Policy Layer)</h3>
+    <ul>
+      <li><strong>What it blocks:</strong> Prompt injection attempts, off-topic or unsafe user requests, and policy-violating input.</li>
+      <li><strong>How it blocks:</strong> Runs a NeMo guardrail check using an LLM decision flow; if triggered, it returns a refusal message immediately and does not call upstream Ollama.</li>
+    </ul>
+
+    <h3>Layer 2: Presidio Input PII Guard (Input Privacy Layer)</h3>
+    <ul>
+      <li><strong>What it blocks/modifies:</strong> Sensitive user data in prompts (for example email, phone, Taiwan national ID, Taiwan mobile, Taiwan student ID).</li>
+      <li><strong>How it blocks/modifies:</strong> Uses Presidio entity detection with spaCy + regex recognizers; then either anonymizes detected values (default) or blocks depending on policy.</li>
+    </ul>
+
+    <h3>Layer 3: Ollama Generation Layer (Upstream LLM)</h3>
+    <ul>
+      <li><strong>What it does:</strong> Generates the model response from the sanitized effective input.</li>
+      <li><strong>How it is controlled:</strong> The proxy forwards a deterministic non-stream upstream call to ensure complete output can be checked before final return.</li>
+    </ul>
+
+    <h3>Layer 4: Presidio Output PII Guard (Output Privacy Layer)</h3>
+    <ul>
+      <li><strong>What it blocks/modifies:</strong> Sensitive data in model outputs, including direct PII leaks or echoed user PII.</li>
+      <li><strong>How it blocks/modifies:</strong> Runs Presidio detection on model output, then either replaces sensitive spans with redaction tokens or blocks the response text based on `pii_action`.</li>
+    </ul>
+
+    <h3>Layer 5: Proxy Response Layer</h3>
+    <ul>
+      <li><strong>What it enforces:</strong> Final policy-consistent response to the client.</li>
+      <li><strong>How it enforces:</strong> Returns input-block message when layer 1 intervenes, otherwise returns output after layer 4 processing.</li>
+    </ul>
+  </section>
+</body>
+</html>
